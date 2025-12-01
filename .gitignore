@@ -1,0 +1,12 @@
+# Ignore Python cache
+__pycache__/
+*.pyc
+
+# Ignore Virtual Environments
+venv/
+.env
+.DS_Store
+
+# Ignore Model Files (Optional: usually we upload the model, but if it's huge >100MB, git rejects it)
+# For this hackathon, KEEP the model so judges can test it.
+# my_first_ai_model.pkl (Do NOT put this here)
