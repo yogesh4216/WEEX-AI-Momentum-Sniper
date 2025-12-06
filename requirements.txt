@@ -1,0 +1,9 @@
+# 1. Create the file with the 5 specific libraries we need
+echo "pandas" > requirements.txt
+echo "pandas_ta" >> requirements.txt
+echo "yfinance" >> requirements.txt
+echo "scikit-learn" >> requirements.txt
+echo "numpy" >> requirements.txt
+
+# 2. Check to make sure it looks right
+cat requirements.txt
