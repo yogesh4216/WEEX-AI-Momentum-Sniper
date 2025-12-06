@@ -5,5 +5,5 @@ echo "yfinance" >> requirements.txt
 echo "scikit-learn" >> requirements.txt
 echo "numpy" >> requirements.txt
 
-# 2. Check to make sure it looks right
+# 2. Check to make sure it looks right (You should see 5 names)
 cat requirements.txt
