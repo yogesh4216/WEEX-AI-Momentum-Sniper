@@ -3,3 +3,4 @@ pandas_ta
 yfinance
 scikit-learn
 numpy
+ccxt
