@@ -20,9 +20,7 @@ passphrase = os.environ.get("WEEX_PASSPHRASE")
 print("🚀 AI TRADING BOT INITIALIZING...")
 
 def get_signature(timestamp, method, endpoint, body):
-    # Pre-hash validation
     if not secret_key: return ""
-    
     message = timestamp + method + endpoint + body
     signature = hmac.new(
         secret_key.encode('utf-8'),
@@ -32,27 +30,27 @@ def get_signature(timestamp, method, endpoint, body):
     return base64.b64encode(signature).decode('utf-8')
 
 def manual_hackathon_test():
-    print("\n🛠️  STARTING FINAL 'BROWSER MIMIC' TEST...")
+    print("\n🛠️  STARTING CONTRACT DOMAIN TEST...")
     
-    if not api_key or not secret_key:
+    if not api_key:
         print("⚠️  Missing Keys. Check Railway Variables.")
         return
 
-    # CORRECT TARGET (Spot API)
-    base_url = "https://api-spot.weex.com"
+    # --- THE CRITICAL FIX: Use the FUTURES Domain ---
+    # Research confirms this is the main domain for the AI Hackathon
+    base_url = "https://api-contract.weex.com"
+    
+    # This endpoint checks your Futures Wallet Assets
     endpoint = "/api/v1/account/assets"
     
-    # 1. Prepare Signature
     timestamp = str(int(time.time() * 1000))
     method = "GET"
     body = ""
     signature = get_signature(timestamp, method, endpoint, body)
 
-    # 2. FULL BROWSER HEADERS (Tricks Cloudflare)
     headers = {
         "Content-Type": "application/json",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "application/json",
         "X-WEEX-ACCESS-KEY": api_key,
         "X-WEEX-ACCESS-PASSPHRASE": passphrase,
         "X-WEEX-ACCESS-TIMESTAMP": timestamp,
@@ -62,28 +60,28 @@ def manual_hackathon_test():
     print(f"👉 Connecting to: {base_url}{endpoint}")
 
     try:
-        # verify=False prevents SSL handshake failures on cloud servers
-        response = requests.get(base_url + endpoint, headers=headers, timeout=15, verify=False)
+        # Timeout increased to 20s to handle slow handshakes
+        response = requests.get(base_url + endpoint, headers=headers, timeout=20, verify=False)
         
         print(f"   🔹 Status Code: {response.status_code}")
         
-        # Check if we got JSON back
         try:
             data = response.json()
+            # Code '00000' is success, but 'success' msg also counts
             if data.get('code') == '00000' or data.get('msg') == 'success':
                 print("\n" + "🎉" * 20)
-                print(f"✅ SUCCESS! CONNECTED TO WEEX")
+                print(f"✅ SUCCESS! CONNECTED TO WEEX FUTURES")
                 print(f"💰 Wallet Response: {data}")
                 print("🎉" * 20 + "\n")
             else:
-                print(f"✅ Connected (Access Denied is OK): {data}")
+                # Even an error like "Invalid API Key" proves we CONNECTED to the server
+                print(f"✅ Connected (Server replied): {data}")
         except:
-            print(f"❌ Failed to parse JSON. Raw Text: {response.text[:100]}...")
+            print(f"❌ Response was not JSON: {response.text[:200]}")
 
     except Exception as e:
         print(f"❌ Connection Failed: {e}")
 
-# Run immediately
 manual_hackathon_test()
 
 # --- DUMMY LOOP ---
