@@ -3,4 +3,4 @@ pandas_ta
 yfinance
 scikit-learn
 numpy
-ccxt>=4.4.35
+ccxt>=4.4.40
