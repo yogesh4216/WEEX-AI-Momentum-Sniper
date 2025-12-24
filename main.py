@@ -32,47 +32,61 @@ def get_signature(timestamp, method, endpoint, body):
     return base64.b64encode(signature).decode('utf-8')
 
 def manual_hackathon_test():
-    print("\n🛠️  STARTING FINAL CONNECTION TEST...")
+    print("\n🛠️  STARTING FORENSIC CONNECTION TEST...")
     
     if not api_key:
         print("⚠️  Missing Keys. Skipping.")
         return
 
-    # --- THE FIX: USE THE OFFICIAL API DOMAIN ---
-    # According to WEEX Docs, this is the correct domain for account/assets
-    base_url = "https://api-spot.weex.com" 
-    
-    endpoint = "/api/v1/account/assets"
-    method = "GET"
-    body = ""
-    timestamp = str(int(time.time() * 1000))
-    signature = get_signature(timestamp, method, endpoint, body)
+    # LIST OF TARGETS TO TRY
+    # We will try both the main domain (with a header hack) and the spot domain
+    targets = [
+        ("https://api.weex.com", "/api/v1/account/assets"),
+        ("https://api-spot.weex.com", "/api/v1/account/assets")
+    ]
 
-    headers = {
-        "Content-Type": "application/json",
-        "X-WEEX-ACCESS-KEY": api_key,
-        "X-WEEX-ACCESS-PASSPHRASE": passphrase,
-        "X-WEEX-ACCESS-TIMESTAMP": timestamp,
-        "X-WEEX-ACCESS-SIGN": signature
-    }
-
-    print(f"👉 Connecting to: {base_url}{endpoint}")
-
-    try:
-        response = requests.get(base_url + endpoint, headers=headers, timeout=10)
-        data = response.json()
+    for base_url, endpoint in targets:
+        print(f"\n👉 Testing Target: {base_url} ...")
         
-        if data.get('code') == '00000' or data.get('msg') == 'success':
-            print("\n" + "🎉" * 20)
-            print(f"✅ SUCCESS! CONNECTED TO OFFICIAL API")
-            print(f"💰 Wallet Response: {data}")
-            print("🎉" * 20 + "\n")
-        else:
-            print(f"❌ Connected but Access Denied: {data}")
-            print("   (This still counts as a 'Pass' for connectivity!)")
+        method = "GET"
+        body = ""
+        timestamp = str(int(time.time() * 1000))
+        signature = get_signature(timestamp, method, endpoint, body)
+
+        # HEADERS (Now with User-Agent to prevent 403 Blocks)
+        headers = {
+            "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "X-WEEX-ACCESS-KEY": api_key,
+            "X-WEEX-ACCESS-PASSPHRASE": passphrase,
+            "X-WEEX-ACCESS-TIMESTAMP": timestamp,
+            "X-WEEX-ACCESS-SIGN": signature
+        }
+
+        try:
+            # We use verify=False to avoid SSL headaches on Railway
+            response = requests.get(base_url + endpoint, headers=headers, timeout=10, verify=False)
             
-    except Exception as e:
-        print(f"❌ Failed: {e}")
+            # DEBUG PRINT (Critical)
+            print(f"   🔹 Status Code: {response.status_code}")
+            
+            try:
+                data = response.json()
+                if data.get('code') == '00000' or data.get('msg') == 'success':
+                    print("\n" + "🎉" * 20)
+                    print(f"✅ SUCCESS! Connected to {base_url}")
+                    print(f"💰 Wallet Response: {data}")
+                    print("🎉" * 20 + "\n")
+                    return # Stop on success
+                else:
+                    print(f"   ❌ Access Denied (But Connected!): {data}")
+            except json.JSONDecodeError:
+                # THIS IS WHERE WE CATCH THE ERROR YOU SAW
+                print(f"   ❌ RESPONSE WAS NOT JSON! RAW OUTPUT:")
+                print(f"   {response.text[:200]}") # Print first 200 chars to see if it's HTML
+                
+        except Exception as e:
+            print(f"   ❌ Connection Error: {e}")
 
 manual_hackathon_test()
 
