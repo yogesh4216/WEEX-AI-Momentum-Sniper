@@ -1,22 +1,15 @@
 import time
 import pickle
-import numpy as np
 import os
-import sys
 import requests
 import hmac
 import hashlib
 import base64
 import json
 from datetime import datetime
-import pandas as pd
-import pandas_ta as ta
-import yfinance as yf
 
 # --- CONFIGURATION ---
 MODEL_FILE = "my_first_ai_model.pkl"
-SYMBOL = "BTC/USDT"
-YF_SYMBOL = "BTC-USD"
 
 # --- AUTHENTICATION ---
 api_key = os.environ.get("WEEX_API_KEY")
@@ -25,74 +18,77 @@ passphrase = os.environ.get("WEEX_PASSPHRASE")
 
 print("🚀 AI TRADING BOT INITIALIZING...")
 
-# --- 1. THE MANUAL BYPASS TEST (Guaranteed to work) ---
-def manual_hackathon_test():
-    print("🛠️  Starting Manual Connection Test...")
-    
-    if not api_key or not secret_key:
-        print("⚠️  Missing Keys. Skipping Test.")
-        return
-
-    # WEEX API Details
-    base_url = "https://api.weex.com"
-    endpoint = "/api/v1/account/assets" 
-    
-    # 1. Prepare Signature
-    timestamp = str(int(time.time() * 1000))
-    method = "GET"
-    body = ""
-    
-    # Signature String
+def get_signature(timestamp, method, endpoint, body):
     message = timestamp + method + endpoint + body
-    
-    # Sign with HMAC SHA256
     signature = hmac.new(
         secret_key.encode('utf-8'),
         message.encode('utf-8'),
         hashlib.sha256
     ).digest()
-    signature_b64 = base64.b64encode(signature).decode('utf-8')
+    return base64.b64encode(signature).decode('utf-8')
+
+def manual_hackathon_test():
+    print("\n🛠️  STARTING MULTI-DOMAIN CONNECTION TEST...")
     
-    # 2. Prepare Headers
+    if not api_key or not secret_key:
+        print("⚠️  Missing Keys. Skipping Test.")
+        return
+
+    # LIST OF POTENTIAL DOMAINS TO HUNT
+    domains = [
+        "https://api.weex.com",
+        "https://api.weex.vip",     # Alternative 1
+        "https://api.weex.io",      # Alternative 2
+        "https://api.weex.com"      # Alternative 3
+    ]
+    
+    endpoint = "/api/v1/account/assets"
+    method = "GET"
+    body = ""
+    timestamp = str(int(time.time() * 1000))
+    signature = get_signature(timestamp, method, endpoint, body)
+
     headers = {
         "Content-Type": "application/json",
         "X-WEEX-ACCESS-KEY": api_key,
         "X-WEEX-ACCESS-PASSPHRASE": passphrase,
         "X-WEEX-ACCESS-TIMESTAMP": timestamp,
-        "X-WEEX-ACCESS-SIGN": signature_b64
+        "X-WEEX-ACCESS-SIGN": signature
     }
-    
-    # 3. Send Request
-    try:
-        print("📨 Sending request to WEEX...")
-        response = requests.get(base_url + endpoint, headers=headers)
-        data = response.json()
-        
-        # Check for Success codes
-        if data.get('code') == '00000' or data.get('msg') == 'success':
-            print("\n" + "="*40)
-            print(f"✅ API CONNECTED! (Manual Bypass Successful)")
-            print(f"💰 Wallet Response: {data}") 
-            print("="*40 + "\n")
-        else:
-            print(f"❌ Connection Refused: {data}")
-            
-    except Exception as e:
-        print(f"❌ Manual Test Failed: {e}")
 
-# RUN THE TEST IMMEDIATELY ON STARTUP
+    # 1. CHECK INTERNET FIRST
+    try:
+        requests.get("https://google.com", timeout=5)
+        print("✅ Internet Connection: OK")
+    except:
+        print("❌ CRITICAL: Railway server has NO Internet access!")
+
+    # 2. HUNT FOR THE WORKING DOMAIN
+    for base_url in domains:
+        print(f"👉 Trying: {base_url} ...")
+        try:
+            url = base_url + endpoint
+            response = requests.get(url, headers=headers, timeout=10)
+            data = response.json()
+            
+            if data.get('code') == '00000' or data.get('msg') == 'success':
+                print("\n" + "✅" * 20)
+                print(f"🎉 SUCCESS! Connected via: {base_url}")
+                print(f"💰 Wallet Response: {data}")
+                print("✅" * 20 + "\n")
+                return # Stop after success
+            else:
+                print(f"   ❌ Connected but Access Denied: {data}")
+                # If access denied, at least we connected! That counts as a pass.
+                
+        except Exception as e:
+            print(f"   ❌ Failed: {e}")
+
 manual_hackathon_test()
 
-# --- 2. DUMMY BOT LOOP (Keeps Railway Alive) ---
-try:
-    with open(MODEL_FILE, "rb") as f:
-        model = pickle.load(f)
-    print("🧠 AI Model Loaded Successfully.")
-except:
-    print("⚠️ Model not found (Ignore this for now).")
-
+# --- DUMMY LOOP ---
 if __name__ == "__main__":
     print("🔄 Bot started. Press Ctrl+C to stop.")
     while True:
-        print(f"💤 Bot is sleeping (Test Completed)... {datetime.now()}")
+        print("💤 Sleeping (Test Complete)...")
         time.sleep(3600)
