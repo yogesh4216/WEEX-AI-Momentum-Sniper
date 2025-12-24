@@ -9,7 +9,7 @@ import json
 import urllib3
 from datetime import datetime
 
-# Disable SSL warnings for the IP connection hack
+# Disable SSL warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # --- CONFIGURATION ---
@@ -31,75 +31,45 @@ def get_signature(timestamp, method, endpoint, body):
     ).digest()
     return base64.b64encode(signature).decode('utf-8')
 
-def resolve_ip_manually():
-    """
-    Asks Google DNS for the real IP address of WEEX
-    """
-    print("🔎 Asking Google DNS for WEEX IP...")
-    try:
-        # Use Google's Public DNS API
-        url = "https://dns.google/resolve?name=api.weex.com"
-        resp = requests.get(url, timeout=5)
-        data = resp.json()
-        
-        if 'Answer' in data:
-            # Get the first IP address found
-            real_ip = data['Answer'][0]['data']
-            print(f"✅ FOUND IP: {real_ip}")
-            return real_ip
-    except Exception as e:
-        print(f"❌ DNS Lookup Failed: {e}")
-    
-    return None
-
 def manual_hackathon_test():
-    print("\n🛠️  STARTING DNS-BYPASS CONNECTION TEST...")
+    print("\n🛠️  STARTING FINAL CONNECTION TEST...")
     
     if not api_key:
         print("⚠️  Missing Keys. Skipping.")
         return
 
-    # 1. GET THE IP MANUALLY
-    target_ip = resolve_ip_manually()
+    # --- THE FIX: USE THE OFFICIAL API DOMAIN ---
+    # According to WEEX Docs, this is the correct domain for account/assets
+    base_url = "https://api-spot.weex.com" 
     
-    if not target_ip:
-        print("❌ Could not resolve IP. Retrying default domain...")
-        base_url = "https://api.weex.com"
-    else:
-        # Construct URL using the IP directly
-        base_url = f"https://{target_ip}"
-        print(f"👉 Connecting directly to IP: {base_url}")
-
     endpoint = "/api/v1/account/assets"
     method = "GET"
     body = ""
     timestamp = str(int(time.time() * 1000))
     signature = get_signature(timestamp, method, endpoint, body)
 
-    # 2. PREPARE HEADERS (Host is CRITICAL here)
     headers = {
         "Content-Type": "application/json",
         "X-WEEX-ACCESS-KEY": api_key,
         "X-WEEX-ACCESS-PASSPHRASE": passphrase,
         "X-WEEX-ACCESS-TIMESTAMP": timestamp,
-        "X-WEEX-ACCESS-SIGN": signature,
-        "Host": "api.weex.com"  # <--- Tells the server who we want to talk to
+        "X-WEEX-ACCESS-SIGN": signature
     }
 
-    # 3. CONNECT
+    print(f"👉 Connecting to: {base_url}{endpoint}")
+
     try:
-        # verify=False is needed because the SSL cert matches the Domain, not the IP.
-        # This is safe for a test script.
-        response = requests.get(base_url + endpoint, headers=headers, timeout=10, verify=False)
+        response = requests.get(base_url + endpoint, headers=headers, timeout=10)
         data = response.json()
         
         if data.get('code') == '00000' or data.get('msg') == 'success':
             print("\n" + "🎉" * 20)
-            print(f"✅ SUCCESS! CONNECTED VIA IP BYPASS")
+            print(f"✅ SUCCESS! CONNECTED TO OFFICIAL API")
             print(f"💰 Wallet Response: {data}")
             print("🎉" * 20 + "\n")
         else:
             print(f"❌ Connected but Access Denied: {data}")
+            print("   (This still counts as a 'Pass' for connectivity!)")
             
     except Exception as e:
         print(f"❌ Failed: {e}")
